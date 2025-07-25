@@ -1,0 +1,65 @@
+import: cairo("img/cairo")
+import: gir("gir")
+
+let Callbacks := {}
+let Events := pqueue(<)
+let Items := slice()
+var Frame
+
+export: fun add_event(Frame, Fn) do
+	Events:insert(Fn, Frame)
+end
+
+var NextIndex := 0
+
+export: fun add_item(Layer, Remove, Fn) do
+	let (I, J) := Items:bfind(Layer; Layer, Item) Layer <> Item[2]
+	let Item := (NextIndex:inc, Layer, Fn)
+	Items:insert(J, Item)
+	Remove and Events:insert(fun Items:remove(_ = Item), Remove)
+end
+
+export: fun add_callback(Remove, Fn) do
+	let Index := NextIndex:inc
+	Callbacks[Index] := Fn
+	Remove and Events:insert(Callbacks:delete(Index), Remove)
+	ret Index
+end
+
+export: let remove_callback := Callbacks:delete(_)
+
+export: fun interpolate(ref X, Final, End, Fn := 1) do
+	let Initial := X, Start := Frame
+	let T0 := Fn(0), T1 := Fn(End - Start)
+	let Scale := (Final - Initial) / (T1 - T0)
+	let Index := NextIndex:inc
+	Callbacks[Index] := fun(Frame) do
+		X := Initial + Scale * (Fn(Frame - Start) - T0)
+	end
+	Events:insert(fun() do X := Final; Callbacks:delete(Index) end, End)
+end
+
+export: fun run(Dest, Width, Height, FPS, Start := 0, End := 1000) do
+	let Surface := cairo::Surface::create(cairo::Format::argb32, Width, Height)
+	let Cairo := cairo::Context::create(Surface)
+	let Pipe := popen('mplayer -quiet - -demuxer +rawvideo -rawvideo w={Width}:h={Height}:fps={FPS}:format=bgra', "w")
+	let Pixels := Surface:get_data
+	Frame := Start
+	add_event(End;) Pipe:close
+	loop
+		let (Fn, Time) := while Events:next
+		print('Event @ {Time}\n')
+		loop while Frame < Time
+			for Fn in Callbacks do Fn(Frame, Cairo) end
+			for Item in Items do
+				Cairo:save
+				Item[3](Cairo)
+				Cairo:restore
+			end
+			Pipe:write(Pixels)
+			print('Rendered frame {Frame}\n')
+			Frame:inc
+		end
+		Fn(Cairo)
+	end
+end

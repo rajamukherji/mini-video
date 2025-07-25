@@ -1,0 +1,21 @@
+import: video("video")
+def (add_callback, add_event, add_item, interpolate) in video
+
+add_item(0, nil; Cairo) do
+	Cairo:rectangle(0, 0, 640, 480)
+	Cairo:set_source_rgb(1, 0, 0)
+	Cairo:fill
+end
+
+add_event(0;) do
+	var X := 0
+	interpolate(X, 640, 100)
+	add_item(1, 200; Cairo) do
+		print('Rendering box {X}\n')
+		Cairo:rectangle(X - 20, 220, 40, 40)
+		Cairo:set_source_rgb(0, 1, 0)
+		Cairo:fill
+	end
+end
+
+video::run(nil, 640, 480, 25, 0)
