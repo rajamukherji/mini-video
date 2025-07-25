@@ -12,31 +12,31 @@ end
 
 var NextIndex := 0
 
-export: fun add_item(Layer, Remove, Fn) do
+export: fun add_item(Layer, Duration, Fn) do
 	let (I, J) := Items:bfind(Layer; Layer, Item) Layer <> Item[2]
 	let Item := (NextIndex:inc, Layer, Fn)
 	Items:insert(J, Item)
-	Remove and Events:insert(fun Items:remove(_ = Item), Remove)
+	Duration and Events:insert(fun Items:remove(_ = Item), Frame + Duration)
 end
 
-export: fun add_callback(Remove, Fn) do
+export: fun add_callback(Duration, Fn) do
 	let Index := NextIndex:inc
 	Callbacks[Index] := Fn
-	Remove and Events:insert(Callbacks:delete(Index), Remove)
+	Duration and Events:insert(Callbacks:delete(Index), Frame + Duration)
 	ret Index
 end
 
 export: let remove_callback := Callbacks:delete(_)
 
-export: fun interpolate(ref X, Final, End, Fn := 1) do
+export: fun interpolate(ref X, Final, Duration, Fn := 1) do
 	let Initial := X, Start := Frame
-	let T0 := Fn(0), T1 := Fn(End - Start)
+	let T0 := Fn(0), T1 := Fn(Duration)
 	let Scale := (Final - Initial) / (T1 - T0)
 	let Index := NextIndex:inc
 	Callbacks[Index] := fun(Frame) do
 		X := Initial + Scale * (Fn(Frame - Start) - T0)
 	end
-	Events:insert(fun() do X := Final; Callbacks:delete(Index) end, End)
+	Events:insert(fun() do X := Final; Callbacks:delete(Index) end, Start + Duration)
 end
 
 export: fun run(Dest, Width, Height, FPS, Start := 0, End := 1000) do
